@@ -127,17 +127,18 @@ There are two Dockerfiles:
 - **`Dockerfile`** — development. Bakes `.env` straight into the image, so `docker compose up --build` just works with no extra setup. Not meant to leave your machine.
 - **`Dockerfile.prod`** — production. No `.env`, no secrets, no source baked in — just the compiled binary, `public/` and `resources/`, running as a non-root user. All configuration is supplied at container start (see [Configuration](#configuration)). This is what `scripts/build.sh` builds and what the published Docker Hub image is made from.
 
+Both images run pending migrations automatically on every start — `entrypoint.sh` runs `artisan migrate` and then execs the server — so there's nothing to run by hand after `docker compose up`.
+
 A ready-to-use `compose.yml` is provided, defaulting to SQLite with just the database directory (not the whole `storage/`, which also holds logs) bind-mounted to `./data/sqlite` on the host — no separate database service to run:
 
 ```bash
 cp .env.example .env
 # edit .env: set API_KEY
 docker compose up -d --build
-docker compose exec app /www/main artisan migrate
 ```
 
 > [!TIP]
-> Because the container's `ENTRYPOINT` runs the HTTP server directly, run one-off Artisan commands (migrations, `db:seed`, etc.) with `docker compose exec app /www/main artisan <command>`.
+> `docker compose exec app /www/main artisan <command>` still works for one-off Artisan commands you actually want to run by hand (`db:seed`, `make:...`, etc.) — migrations just aren't one of them anymore.
 
 ### Production image (Docker Hub)
 
@@ -162,8 +163,9 @@ services:
 cp .env.example .env
 # edit .env: set APP_KEY, API_KEY, and anything else in the Configuration table above
 docker compose up -d
-docker compose exec app /www/main artisan migrate
 ```
+
+Migrations run automatically on startup (see above) — no separate `artisan migrate` step needed.
 
 > [!IMPORTANT]
 > The image has no `.env` inside it — every variable in [Configuration](#configuration) must be supplied from outside, via `env_file`/`environment` in `compose.yml` as above, or your orchestrator's secrets store. They're read once at process startup: editing `.env` on the host doesn't affect an already-running container. Apply changes with `docker compose up -d` (recreates the container with the new values), not `docker compose restart` (reuses the environment the container already has).

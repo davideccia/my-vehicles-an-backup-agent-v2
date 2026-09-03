@@ -18,10 +18,14 @@ COPY --from=builder /build/main /www/
 COPY --from=builder /build/.env /www/.env
 COPY --from=builder /build/public/ /www/public/
 COPY --from=builder /build/resources/ /www/resources/
+COPY entrypoint.sh /www/entrypoint.sh
+RUN chmod +x /www/entrypoint.sh
 
 # Hits GET /healthcheck (unauthenticated, unversioned — unlike /ping) on the
 # port baked into .env's APP_PORT.
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/healthcheck || exit 1
 
-ENTRYPOINT ["/www/main"]
+# Runs pending migrations, then execs the server so it becomes PID 1
+# (correct signal handling for `docker stop`).
+ENTRYPOINT ["/www/entrypoint.sh"]

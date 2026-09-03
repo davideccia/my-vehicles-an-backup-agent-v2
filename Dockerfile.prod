@@ -22,11 +22,13 @@ WORKDIR /www
 COPY --from=builder --chown=appuser:appgroup /build/main /www/
 COPY --from=builder --chown=appuser:appgroup /build/public/ /www/public/
 COPY --from=builder --chown=appuser:appgroup /build/resources/ /www/resources/
+COPY --chown=appuser:appgroup entrypoint.sh /www/entrypoint.sh
 
 # Config/secrets are NOT baked in: supply them at runtime via env vars
 # (e.g. `docker run --env-file .env` or an orchestrator's secrets store).
 RUN mkdir -p /www/storage/logs /www/storage/database \
-    && chown -R appuser:appgroup /www/storage
+    && chown -R appuser:appgroup /www/storage \
+    && chmod +x /www/entrypoint.sh
 
 USER appuser
 
@@ -35,4 +37,6 @@ USER appuser
 HEALTHCHECK --interval=10s --timeout=5s --start-period=10s --retries=5 \
   CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/healthcheck || exit 1
 
-ENTRYPOINT ["/www/main"]
+# Runs pending migrations, then execs the server so it becomes PID 1
+# (correct signal handling for `docker stop`).
+ENTRYPOINT ["/www/entrypoint.sh"]
