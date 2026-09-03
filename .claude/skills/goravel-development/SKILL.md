@@ -1,0 +1,1 @@
+../../../.agents/skills/goravel-development/SKILL.md

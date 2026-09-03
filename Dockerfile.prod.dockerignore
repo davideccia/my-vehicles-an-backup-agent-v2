@@ -1,0 +1,10 @@
+.git
+.env
+.env.*
+data/
+storage/logs/
+storage/database/
+tests/
+*.md
+.idea
+.vscode

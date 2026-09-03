@@ -1,0 +1,13 @@
+services:
+  app:
+    build:
+      context: .
+    ports:
+      - "3000:3000"
+    env_file: .env
+    environment:
+      DB_CONNECTION: sqlite
+      DB_DATABASE: storage/database/database.sqlite
+    volumes:
+      - ./data/sqlite:/www/storage/database
+    restart: unless-stopped
