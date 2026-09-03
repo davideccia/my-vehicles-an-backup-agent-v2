@@ -127,7 +127,7 @@ There are two Dockerfiles:
 - **`Dockerfile`** — development. Bakes `.env` straight into the image, so `docker compose up --build` just works with no extra setup. Not meant to leave your machine.
 - **`Dockerfile.prod`** — production. No `.env`, no secrets, no source baked in — just the compiled binary, `public/` and `resources/`, running as a non-root user. All configuration is supplied at container start (see [Configuration](#configuration)). This is what `scripts/build.sh` builds and what the published Docker Hub image is made from.
 
-Both images run pending migrations automatically on every start — `entrypoint.sh` runs `artisan migrate` and then execs the server — so there's nothing to run by hand after `docker compose up`.
+Both images run pending migrations automatically on every start — `entrypoint.sh` runs `artisan migrate` and then execs the server — so there's nothing to run by hand after `docker compose up`. In `Dockerfile.prod`, the entrypoint briefly starts as root purely to `chown` `storage/` to the app user before dropping to it via `su-exec`: Docker auto-creates a bind-mounted host directory (like `./data/sqlite`) as root if it doesn't already exist, which would otherwise leave the non-root process unable to write to it.
 
 A ready-to-use `compose.yml` is provided, defaulting to SQLite with just the database directory (not the whole `storage/`, which also holds logs) bind-mounted to `./data/sqlite` on the host — no separate database service to run:
 

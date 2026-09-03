@@ -13,7 +13,7 @@ RUN go build --ldflags "-s -w -extldflags -static" -o main .
 
 FROM alpine:3.21
 
-RUN apk add --no-cache wget \
+RUN apk add --no-cache wget su-exec \
     && addgroup -g 1001 -S appgroup \
     && adduser -S appuser -u 1001 -G appgroup
 
@@ -22,7 +22,7 @@ WORKDIR /www
 COPY --from=builder --chown=appuser:appgroup /build/main /www/
 COPY --from=builder --chown=appuser:appgroup /build/public/ /www/public/
 COPY --from=builder --chown=appuser:appgroup /build/resources/ /www/resources/
-COPY --chown=appuser:appgroup entrypoint.sh /www/entrypoint.sh
+COPY entrypoint.sh /www/entrypoint.sh
 
 # Config/secrets are NOT baked in: supply them at runtime via env vars
 # (e.g. `docker run --env-file .env` or an orchestrator's secrets store).
@@ -30,7 +30,8 @@ RUN mkdir -p /www/storage/logs /www/storage/database \
     && chown -R appuser:appgroup /www/storage \
     && chmod +x /www/entrypoint.sh
 
-USER appuser
+# Stays root here: entrypoint.sh needs it to fix bind-mount ownership,
+# then drops to appuser itself via su-exec before running anything else.
 
 # Hits GET /healthcheck (unauthenticated, unversioned — unlike /ping) on the
 # port baked into APP_PORT (default 3000, see config/http.go).
