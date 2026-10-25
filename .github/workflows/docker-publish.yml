@@ -1,11 +1,13 @@
 name: Docker publish
 
 # Publishes Dockerfile.prod to Docker Hub as :X.Y.Z and :latest for both
-# linux/amd64 and linux/arm64. Release by pushing a semver tag:
-#   git tag -a v1.2.3 -m "v1.2.3" && git push origin v1.2.3
+# linux/amd64 and linux/arm64 whenever a GitHub Release is published on a
+# vX.Y.Z tag:
+#   gh release create v1.2.3 --generate-notes
+# Pre-releases (e.g. v1.3.0-rc.1) get their version tag but not :latest.
 on:
-  push:
-    tags: ['v*.*.*']
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -41,12 +43,12 @@ jobs:
           images: ${{ env.IMAGE_NAME }}
           tags: |
             type=semver,pattern={{version}}
-            type=raw,value=latest
+            type=raw,value=latest,enable=${{ !github.event.release.prerelease }}
 
       - name: Fail if not on a semver tag
         if: steps.meta.outputs.version == '' || !startsWith(github.ref, 'refs/tags/v')
         run: |
-          echo "::error::Run this workflow on a vX.Y.Z tag (got ${GITHUB_REF})"
+          echo "::error::Release tag must be vX.Y.Z; when run manually, pick a vX.Y.Z tag as ref (got ${GITHUB_REF})"
           exit 1
 
       - uses: docker/build-push-action@v6
