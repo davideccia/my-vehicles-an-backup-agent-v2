@@ -125,7 +125,7 @@ See `.env.example` for the full list, including mail, gRPC and AI-related settin
 There are two Dockerfiles:
 
 - **`Dockerfile`** — development. Bakes `.env` straight into the image, so `docker compose up --build` just works with no extra setup. Not meant to leave your machine.
-- **`Dockerfile.prod`** — production. No `.env`, no secrets, no source baked in — just the compiled binary, `public/` and `resources/`, running as a non-root user. All configuration is supplied at container start (see [Configuration](#configuration)). This is what `scripts/build.sh` builds and what the published Docker Hub image is made from.
+- **`Dockerfile.prod`** — production. No `.env`, no secrets, no source baked in — just the compiled binary, `public/` and `resources/`, running as a non-root user. All configuration is supplied at container start (see [Configuration](#configuration)). This is what the [GitHub Actions workflow](.github/workflows/docker-publish.yml) builds and what the published Docker Hub image is made from.
 
 Both images run pending migrations automatically on every start — `entrypoint.sh` runs `artisan migrate` and then execs the server — so there's nothing to run by hand after `docker compose up`. In `Dockerfile.prod`, the entrypoint briefly starts as root purely to `chown` `storage/` to the app user before dropping to it via `su-exec`: Docker auto-creates a bind-mounted host directory (like `./data/sqlite`) as root if it doesn't already exist, which would otherwise leave the non-root process unable to write to it.
 
@@ -142,7 +142,7 @@ docker compose up -d --build
 
 ### Production image (Docker Hub)
 
-For a real deployment, use the published image, [`ddavideccia/my-vehicles-an-backup-agent`](https://hub.docker.com/r/ddavideccia/my-vehicles-an-backup-agent), instead of building locally. Point `compose.yml` at it with `image:` instead of `build: .`:
+For a real deployment, use the published image, [`ddavideccia/my-vehicles-an-backup-agent`](https://hub.docker.com/r/ddavideccia/my-vehicles-an-backup-agent), instead of building locally. Every release is published as `:X.Y.Z` and `:latest` — pin a specific version (e.g. `:1.1.0`) for reproducible deployments. Point `compose.yml` at it with `image:` instead of `build: .`:
 
 ```yaml
 services:
@@ -170,7 +170,18 @@ Migrations run automatically on startup (see above) — no separate `artisan mig
 > [!IMPORTANT]
 > The image has no `.env` inside it — every variable in [Configuration](#configuration) must be supplied from outside, via `env_file`/`environment` in `compose.yml` as above, or your orchestrator's secrets store. They're read once at process startup: editing `.env` on the host doesn't affect an already-running container. Apply changes with `docker compose up -d` (recreates the container with the new values), not `docker compose restart` (reuses the environment the container already has).
 
-Publishing a new version of the image (maintainers only) is a `make build` away — see [`scripts/build.sh`](scripts/build.sh), which builds `Dockerfile.prod` for both `linux/amd64` and `linux/arm64`, tags it with the current commit SHA and `latest`, and pushes both tags to Docker Hub. Requires `docker login` first; skip the push with `PUSH=0 make build` (builds a single, host-platform image loaded into the local daemon instead — multi-platform output can only be pushed straight to the registry, not loaded locally).
+#### Releasing (maintainers only)
+
+Versions follow [semver](https://semver.org) and are driven by git tags. Pushing a `vX.Y.Z` tag triggers [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml), which builds `Dockerfile.prod` for both `linux/amd64` and `linux/arm64`, bakes the version into the image as `APP_VERSION`, and pushes `:X.Y.Z` and `:latest` to Docker Hub:
+
+```bash
+git tag -a v1.2.0 -m "v1.2.0"
+git push origin v1.2.0
+```
+
+The workflow needs two repository secrets: `DOCKERHUB_USERNAME` and `DOCKERHUB_TOKEN` (a Docker Hub personal access token with Read & Write scope).
+
+To build the production image locally without publishing (host platform only): `docker build -f Dockerfile.prod -t my-vehicles-an-backup-agent .`
 
 ### Choosing a different database
 

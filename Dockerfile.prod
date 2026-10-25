@@ -18,6 +18,11 @@ RUN GOOS=$TARGETOS GOARCH=$TARGETARCH go build --ldflags "-s -w -extldflags -sta
 
 FROM alpine:3.24
 
+# Set by CI from the release tag (vX.Y.Z -> X.Y.Z); read by config/telemetry.go.
+# Still overridable at runtime with `-e APP_VERSION=...`.
+ARG APP_VERSION=dev
+ENV APP_VERSION=$APP_VERSION
+
 RUN apk add --no-cache wget su-exec \
     && addgroup -g 1001 -S appgroup \
     && adduser -S appuser -u 1001 -G appgroup

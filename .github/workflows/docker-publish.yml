@@ -1,0 +1,63 @@
+name: Docker publish
+
+# Publishes Dockerfile.prod to Docker Hub as :X.Y.Z and :latest for both
+# linux/amd64 and linux/arm64. Release by pushing a semver tag:
+#   git tag -a v1.2.3 -m "v1.2.3" && git push origin v1.2.3
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docker-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  IMAGE_NAME: ddavideccia/my-vehicles-an-backup-agent
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The Go stage cross-compiles on $BUILDPLATFORM; QEMU is only needed
+      # for the arm64 runtime stage's `RUN apk add`.
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+
+      - name: Fail if not on a semver tag
+        if: steps.meta.outputs.version == '' || !startsWith(github.ref, 'refs/tags/v')
+        run: |
+          echo "::error::Run this workflow on a vX.Y.Z tag (got ${GITHUB_REF})"
+          exit 1
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.prod
+          platforms: linux/amd64,linux/arm64
+          pull: true
+          push: true
+          build-args: APP_VERSION=${{ steps.meta.outputs.version }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
