@@ -172,9 +172,11 @@ Migrations run automatically on startup (see above) — no separate `artisan mig
 
 #### Releasing (maintainers only)
 
-Versions follow [semver](https://semver.org). Publishing a GitHub Release on a `vX.Y.Z` tag triggers [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml), which builds `Dockerfile.prod` for both `linux/amd64` and `linux/arm64`, bakes the version into the image as `APP_VERSION`, and pushes `:X.Y.Z` and `:latest` to Docker Hub. Pre-releases (e.g. `v1.3.0-rc.1`) are pushed under their version tag only, never as `:latest`. Create the release from the GitHub UI or with:
+Versions follow [semver](https://semver.org), and the current one lives in the [`VERSION`](VERSION) file. Publishing a GitHub Release on a `vX.Y.Z` tag triggers [`.github/workflows/docker-publish.yml`](.github/workflows/docker-publish.yml), which builds `Dockerfile.prod` for both `linux/amd64` and `linux/arm64`, bakes the version into the image as `APP_VERSION`, and pushes `:X.Y.Z` and `:latest` to Docker Hub. Pre-releases (e.g. `v1.3.0-rc.1`) are pushed under their version tag only, never as `:latest`. The workflow refuses to publish if the tag doesn't match `VERSION`, so bump it first:
 
 ```bash
+echo 1.2.0 > VERSION
+git commit -am "chore(release): 1.2.0" && git push
 gh release create v1.2.0 --generate-notes
 ```
 

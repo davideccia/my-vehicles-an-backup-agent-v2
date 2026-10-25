@@ -4,6 +4,7 @@ name: Docker publish
 # linux/amd64 and linux/arm64 whenever a GitHub Release is published on a
 # vX.Y.Z tag:
 #   gh release create v1.2.3 --generate-notes
+# The tag must match the VERSION file (bump it in a commit first).
 # Pre-releases (e.g. v1.3.0-rc.1) get their version tag but not :latest.
 on:
   release:
@@ -50,6 +51,18 @@ jobs:
         run: |
           echo "::error::Release tag must be vX.Y.Z; when run manually, pick a vX.Y.Z tag as ref (got ${GITHUB_REF})"
           exit 1
+
+      # VERSION is the source of truth: the release tag must match it, so a
+      # release can't be cut without the version bump commit.
+      - name: Check VERSION matches release tag
+        env:
+          TAG_VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ "$FILE_VERSION" != "$TAG_VERSION" ]; then
+            echo "::error file=VERSION::VERSION is ${FILE_VERSION} but release tag is v${TAG_VERSION}"
+            exit 1
+          fi
 
       - uses: docker/build-push-action@v6
         with:
