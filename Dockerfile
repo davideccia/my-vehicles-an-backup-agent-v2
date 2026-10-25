@@ -1,14 +1,17 @@
-FROM golang:alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0
 
 WORKDIR /build
+
+COPY go.mod go.sum ./
+RUN go mod download
+
 COPY . .
-RUN go mod tidy
 RUN go build --ldflags "-s -w -extldflags -static" -o main .
 
-FROM alpine:latest
+FROM alpine:3.24
 
 RUN apk add --no-cache wget
 

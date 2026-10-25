@@ -34,7 +34,7 @@ All endpoints are unprefixed (e.g. `http://localhost:3000/ping`).
 
 ## Requirements
 
-- [Go](https://go.dev) 1.25+
+- [Go](https://go.dev) 1.26+
 - One of: SQLite (no extra setup), PostgreSQL, or MySQL
 - [Docker](https://www.docker.com) and Docker Compose, if you'd rather not install Go or a database locally
 
